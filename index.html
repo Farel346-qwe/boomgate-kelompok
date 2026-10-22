@@ -48,23 +48,35 @@
       margin: 24px auto;
     }
 
-    .result-box {
-      padding: 16px;
+    .box {
+      padding: 14px;
+      margin-top: 12px;
       border-radius: 10px;
+      overflow-wrap: anywhere;
+    }
+
+    .database-box {
+      background: #eff6ff;
+    }
+
+    .result-box {
       background: #f0fdf4;
       border: 1px solid #bbf7d0;
     }
 
-    #result {
+    #result, #studentInfo {
       overflow-wrap: anywhere;
+    }
+
+    #result {
       font-size: 18px;
       font-weight: bold;
     }
 
-    #status {
-      margin-top: 12px;
+    #scanStatus {
       font-size: 14px;
       color: #475569;
+      line-height: 1.5;
     }
 
     button {
@@ -88,21 +100,28 @@
     <p class="description">
       Praktikum Internet of Things
       <br>
-      Langkah 3: Pengujian QR Reader
+      Langkah 4: Database Mahasiswa
     </p>
+
+    <div class="box database-box">
+      <strong>Status database:</strong>
+      <p id="databaseStatus">Memuat database...</p>
+    </div>
 
     <!-- Area kamera dan scanner -->
     <div id="reader"></div>
 
-    <!-- Hasil pembacaan QR -->
-    <div class="result-box">
+    <!-- Hasil QR dan pencarian mahasiswa -->
+    <div class="box result-box">
       <strong>Hasil scan:</strong>
-
       <p id="result">Belum ada QR yang dipindai.</p>
 
-      <div id="status">
-        Arahkan kamera ke QR Code.
-      </div>
+      <strong>Data mahasiswa:</strong>
+      <p id="studentInfo">Belum ada data.</p>
+
+      <p id="scanStatus">
+        Arahkan kamera ke QR Code yang berisi NIM.
+      </p>
     </div>
 
     <button id="clearButton" type="button">
@@ -111,26 +130,155 @@
   </main>
 
   <script>
-    const resultElement = document.getElementById("result");
-    const statusElement = document.getElementById("status");
-    const clearButton = document.getElementById("clearButton");
+    const resultElement =
+      document.getElementById("result");
+
+    const studentInfoElement =
+      document.getElementById("studentInfo");
+
+    const scanStatusElement =
+      document.getElementById("scanStatus");
+
+    const databaseStatusElement =
+      document.getElementById("databaseStatus");
+
+    const clearButton =
+      document.getElementById("clearButton");
+
+    // Menyimpan data mahasiswa dari JSON
+    let mahasiswaData = [];
+    let databaseSiap = false;
+
+    // Mengambil file mahasiswa.json
+    async function loadDatabase() {
+      try {
+        const response = await fetch("./mahasiswa.json");
+
+        if (!response.ok) {
+          throw new Error(
+            "HTTP error: " + response.status
+          );
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          throw new Error(
+            "Format JSON harus berupa kumpulan data."
+          );
+        }
+
+        // Validasi dasar format database
+        const validData = data.every((item) =>
+          item &&
+          item.NIM !== undefined &&
+          item.NAMA !== undefined
+        );
+
+        if (!validData) {
+          throw new Error(
+            "Field NIM atau NAMA tidak lengkap."
+          );
+        }
+
+        mahasiswaData = data;
+        databaseSiap = true;
+
+        databaseStatusElement.textContent =
+          "Siap (" + mahasiswaData.length +
+          " mahasiswa).";
+
+        databaseStatusElement.style.color =
+          "#166534";
+
+        console.log(
+          "Database berhasil dimuat:",
+          mahasiswaData
+        );
+
+      } catch (error) {
+        databaseSiap = false;
+
+        databaseStatusElement.textContent =
+          "Gagal dimuat. Periksa file JSON.";
+
+        databaseStatusElement.style.color =
+          "#b91c1c";
+
+        scanStatusElement.textContent =
+          "Database belum siap. Coba muat ulang halaman.";
+
+        console.error(
+          "Gagal memuat database:",
+          error
+        );
+      }
+    }
 
     // Dipanggil saat QR berhasil dibaca
-    function onScanSuccess(decodedText, decodedResult) {
-      resultElement.textContent = decodedText;
+    function onScanSuccess(decodedText) {
+      const nim = decodedText.trim();
 
-      statusElement.textContent =
-        "QR berhasil dibaca! Tahap ini hanya menampilkan teks QR.";
+      resultElement.textContent = nim;
+      studentInfoElement.textContent =
+        "Sedang mencari data...";
 
-      console.log("Hasil QR:", decodedText);
+      if (!databaseSiap) {
+        studentInfoElement.textContent =
+          "Data belum dapat diperiksa.";
+
+        scanStatusElement.textContent =
+          "Database belum berhasil dimuat.";
+
+        return;
+      }
+
+      // Mencari mahasiswa berdasarkan NIM
+      const mahasiswa = mahasiswaData.find(
+        (item) =>
+          String(item.NIM).trim() === nim
+      );
+
+      if (mahasiswa) {
+        studentInfoElement.textContent =
+          "NIM: " + mahasiswa.NIM +
+          " | Nama: " + mahasiswa.NAMA;
+
+        scanStatusElement.textContent =
+          "Mahasiswa ditemukan. QR berhasil divalidasi.";
+
+        scanStatusElement.style.color =
+          "#166534";
+
+        console.log(
+          "Mahasiswa ditemukan:",
+          mahasiswa
+        );
+
+      } else {
+        studentInfoElement.textContent =
+          "Tidak ada data mahasiswa.";
+
+        scanStatusElement.textContent =
+          "NIM " + nim +
+          " tidak terdaftar di database.";
+
+        scanStatusElement.style.color =
+          "#b91c1c";
+
+        console.log(
+          "NIM tidak ditemukan:",
+          nim
+        );
+      }
     }
 
-    // Error pembacaan per frame diabaikan
     function onScanFailure(error) {
-      // Tidak perlu menampilkan error terus-menerus.
+      // Kegagalan membaca satu frame kamera
+      // tidak perlu ditampilkan berulang kali.
     }
 
-    // Menyiapkan scanner
+    // Siapkan scanner
     const scanner = new Html5QrcodeScanner(
       "reader",
       {
@@ -144,16 +292,27 @@
       false
     );
 
-    // Menampilkan antarmuka QR Reader
-    scanner.render(onScanSuccess, onScanFailure);
+    scanner.render(
+      onScanSuccess,
+      onScanFailure
+    );
 
-    // Membersihkan hasil pengujian
+    // Ambil data dari server ketika halaman dibuka
+    loadDatabase();
+
+    // Menghapus tampilan hasil pengujian
     clearButton.addEventListener("click", function () {
       resultElement.textContent =
         "Belum ada QR yang dipindai.";
 
-      statusElement.textContent =
-        "Arahkan kamera ke QR Code.";
+      studentInfoElement.textContent =
+        "Belum ada data.";
+
+      scanStatusElement.textContent =
+        "Arahkan kamera ke QR Code yang berisi NIM.";
+
+      scanStatusElement.style.color =
+        "#475569";
     });
   </script>
 </body>

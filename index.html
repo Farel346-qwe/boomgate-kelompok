@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Reader - BoomGate</title>
+
+  <!-- Library untuk membaca QR Code -->
+  <script src="https://unpkg.com/html5-qrcode"
+          type="text/javascript"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px 16px;
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    .container {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 24px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 18px #00000012;
+    }
+
+    h1 {
+      margin-top: 0;
+      color: #166534;
+      text-align: center;
+    }
+
+    .description {
+      text-align: center;
+      line-height: 1.6;
+      color: #475569;
+    }
+
+    #reader {
+      width: 100%;
+      margin: 24px auto;
+    }
+
+    .result-box {
+      padding: 16px;
+      border-radius: 10px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+    }
+
+    #result {
+      overflow-wrap: anywhere;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    #status {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #475569;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      background: #166534;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <h1>QR Reader BoomGate</h1>
+
+    <p class="description">
+      Praktikum Internet of Things
+      <br>
+      Langkah 3: Pengujian QR Reader
+    </p>
+
+    <!-- Area kamera dan scanner -->
+    <div id="reader"></div>
+
+    <!-- Hasil pembacaan QR -->
+    <div class="result-box">
+      <strong>Hasil scan:</strong>
+
+      <p id="result">Belum ada QR yang dipindai.</p>
+
+      <div id="status">
+        Arahkan kamera ke QR Code.
+      </div>
+    </div>
+
+    <button id="clearButton" type="button">
+      Hapus hasil scan
+    </button>
+  </main>
+
+  <script>
+    const resultElement = document.getElementById("result");
+    const statusElement = document.getElementById("status");
+    const clearButton = document.getElementById("clearButton");
+
+    // Dipanggil saat QR berhasil dibaca
+    function onScanSuccess(decodedText, decodedResult) {
+      resultElement.textContent = decodedText;
+
+      statusElement.textContent =
+        "QR berhasil dibaca! Tahap ini hanya menampilkan teks QR.";
+
+      console.log("Hasil QR:", decodedText);
+    }
+
+    // Error pembacaan per frame diabaikan
+    function onScanFailure(error) {
+      // Tidak perlu menampilkan error terus-menerus.
+    }
+
+    // Menyiapkan scanner
+    const scanner = new Html5QrcodeScanner(
+      "reader",
+      {
+        fps: 10,
+        qrbox: {
+          width: 250,
+          height: 250
+        },
+        rememberLastUsedCamera: true
+      },
+      false
+    );
+
+    // Menampilkan antarmuka QR Reader
+    scanner.render(onScanSuccess, onScanFailure);
+
+    // Membersihkan hasil pengujian
+    clearButton.addEventListener("click", function () {
+      resultElement.textContent =
+        "Belum ada QR yang dipindai.";
+
+      statusElement.textContent =
+        "Arahkan kamera ke QR Code.";
+    });
+  </script>
+</body>
+</html>
